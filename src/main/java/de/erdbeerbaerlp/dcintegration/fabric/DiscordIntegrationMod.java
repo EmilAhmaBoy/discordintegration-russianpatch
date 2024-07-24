@@ -1,5 +1,9 @@
 package de.erdbeerbaerlp.dcintegration.fabric;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonSyntaxException;
 import dcshadow.net.kyori.adventure.text.Component;
 import dcshadow.net.kyori.adventure.text.serializer.gson.GsonComponentSerializer;
 import de.erdbeerbaerlp.dcintegration.common.DiscordIntegration;
@@ -22,6 +26,7 @@ import net.dv8tion.jda.api.utils.messages.MessageCreateBuilder;
 import net.dv8tion.jda.api.utils.messages.MessageCreateData;
 import net.fabricmc.api.DedicatedServerModInitializer;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.network.message.SignedMessage;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -30,11 +35,14 @@ import net.minecraft.text.Text;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
 
 import static de.erdbeerbaerlp.dcintegration.common.DiscordIntegration.INSTANCE;
 import static de.erdbeerbaerlp.dcintegration.common.DiscordIntegration.LOGGER;
+import static de.erdbeerbaerlp.dcintegration.fabric.RussianJSON.translations;
 
 public class DiscordIntegrationMod implements DedicatedServerModInitializer {
     /**
@@ -83,7 +91,7 @@ public class DiscordIntegrationMod implements DedicatedServerModInitializer {
                         final EmbedBuilder b = Configuration.instance().embedMode.chatMessages.toEmbedJson(Configuration.instance().embedMode.chatMessages.customJSON
                                 .replace("%uuid%", player.getUuid().toString())
                                 .replace("%uuid_dashless%", player.getUuid().toString().replace("-", ""))
-                                .replace("%name%", FabricMessageUtils.formatPlayerName(player))
+                                .replace("%name%", player.getEntityName())
                                 .replace("%randomUUID%", UUID.randomUUID().toString())
                                 .replace("%avatarURL%", avatarURL)
                                 .replace("%msg%", text)
@@ -99,7 +107,8 @@ public class DiscordIntegrationMod implements DedicatedServerModInitializer {
                         DiscordIntegration.INSTANCE.sendMessage(new DiscordMessage(b.build()),INSTANCE.getChannel(Configuration.instance().advanced.chatOutputChannelID));
                     }
                 } else
-                    DiscordIntegration.INSTANCE.sendMessage(FabricMessageUtils.formatPlayerName(player), player.getUuid().toString(), new DiscordMessage(embed, text, true), channel);
+                    DiscordIntegration.INSTANCE.getChannel();
+                    DiscordIntegration.INSTANCE.sendMessage(player.getName().getString(), player.getUuid().toString(), new DiscordMessage(embed, text, true), channel);
 
             if (!Configuration.instance().compatibility.disableParsingMentionsIngame) {
                 final String editedJson = GsonComponentSerializer.gson().serialize(MessageUtils.mentionsToNames(comp, channel.getGuild()));
@@ -167,6 +176,22 @@ public class DiscordIntegrationMod implements DedicatedServerModInitializer {
     }
 
     private void serverStarted(MinecraftServer minecraftServer) {
+        FabricLoader.getInstance().getAllMods().forEach(modContainer -> {
+            Optional<Path> optionalRussianTranslations = modContainer.findPath("assets/" + modContainer.getMetadata().getId() + "/lang/ru_ru.json");
+            if (optionalRussianTranslations.isPresent()) {
+                Path russianTranslations = optionalRussianTranslations.get();
+                try {
+                    String jsonText = Files.readString(russianTranslations);
+                    try {
+                        JsonObject json = (new Gson()).fromJson(jsonText, JsonObject.class);
+                        Set<Map.Entry<String, JsonElement>> entrySet = json.entrySet();
+                        for (Map.Entry<String, JsonElement> entry : entrySet) {
+                            translations.add(entry.getKey(), entry.getValue());
+                        }
+                    } catch (JsonSyntaxException ignored) {}
+                } catch (IOException ignored) {}
+            }
+        });
         DiscordIntegration.LOGGER.info("Started");
         if (DiscordIntegration.INSTANCE != null) {
             DiscordIntegration.started = new Date().getTime();
@@ -231,7 +256,6 @@ public class DiscordIntegrationMod implements DedicatedServerModInitializer {
     }
 
     private void serverStopped(MinecraftServer minecraftServer) {
-
         Metrics.MetricsBase.scheduler.shutdownNow();
         if (DiscordIntegration.INSTANCE != null) {
             if (!stopped && DiscordIntegration.INSTANCE.getJDA() != null) minecraftServer.execute(() -> {

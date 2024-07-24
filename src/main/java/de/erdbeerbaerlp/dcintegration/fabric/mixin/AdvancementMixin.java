@@ -6,11 +6,15 @@ import de.erdbeerbaerlp.dcintegration.common.storage.Localization;
 import de.erdbeerbaerlp.dcintegration.common.storage.linking.LinkManager;
 import de.erdbeerbaerlp.dcintegration.common.util.DiscordMessage;
 import de.erdbeerbaerlp.dcintegration.common.util.TextColors;
+import de.erdbeerbaerlp.dcintegration.fabric.RussianJSON;
 import de.erdbeerbaerlp.dcintegration.fabric.util.FabricMessageUtils;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.minecraft.advancement.Advancement;
 import net.minecraft.advancement.PlayerAdvancementTracker;
 import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.text.Text;
+import net.minecraft.text.TextContent;
+import net.minecraft.text.TranslatableTextContent;
 import net.minecraft.util.Formatting;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -23,6 +27,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
 import static de.erdbeerbaerlp.dcintegration.common.DiscordIntegration.INSTANCE;
+import static de.erdbeerbaerlp.dcintegration.fabric.RussianJSON.translate;
 
 @Mixin(PlayerAdvancementTracker.class)
 public class AdvancementMixin {
@@ -39,6 +44,9 @@ public class AdvancementMixin {
             if (!Localization.instance().advancementMessage.isBlank()) {
                 if (Configuration.instance().embedMode.enabled && Configuration.instance().embedMode.advancementMessage.asEmbed) {
                     final String avatarURL = Configuration.instance().webhook.playerAvatarURL.replace("%uuid%", owner.getUuid().toString()).replace("%uuid_dashless%", owner.getUuid().toString().replace("-", "")).replace("%name%", owner.getName().getString()).replace("%randomUUID%", UUID.randomUUID().toString());
+                    String titleTranslation = translate(advancement.getDisplay().getTitle());
+                    String descTranslation = translate(advancement.getDisplay().getDescription());
+
                     if (!Configuration.instance().embedMode.advancementMessage.customJSON.isBlank()) {
                         final EmbedBuilder b = Configuration.instance().embedMode.advancementMessage.toEmbedJson(Configuration.instance().embedMode.advancementMessage.customJSON
                                 .replace("%uuid%", owner.getUuid().toString())
@@ -46,8 +54,8 @@ public class AdvancementMixin {
                                 .replace("%name%", FabricMessageUtils.formatPlayerName(owner))
                                 .replace("%randomUUID%", UUID.randomUUID().toString())
                                 .replace("%avatarURL%", avatarURL)
-                                .replace("%advName%", Formatting.strip(advancement.getDisplay().getTitle().getString()))
-                                .replace("%advDesc%", Formatting.strip(advancement.getDisplay().getDescription().getString()))
+                                .replace("%advName%", Formatting.strip(titleTranslation))
+                                .replace("%advDesc%", Formatting.strip(descTranslation))
                                 .replace("%advNameURL%", URLEncoder.encode(Formatting.strip(advancement.getDisplay().getTitle().getString()), StandardCharsets.UTF_8))
                                 .replace("%advDescURL%", URLEncoder.encode(Formatting.strip(advancement.getDisplay().getDescription().getString()), StandardCharsets.UTF_8))
                                 .replace("%avatarURL%", avatarURL)
@@ -60,15 +68,9 @@ public class AdvancementMixin {
                                 .setDescription(Localization.instance().advancementMessage.replace("%player%",
                                                 Formatting.strip(FabricMessageUtils.formatPlayerName(owner)))
                                         .replace("%advName%",
-                                                Formatting.strip(advancement
-                                                        .getDisplay()
-                                                        .getTitle()
-                                                        .getString()))
+                                                Formatting.strip(titleTranslation))
                                         .replace("%advDesc%",
-                                                Formatting.strip(advancement
-                                                        .getDisplay()
-                                                        .getDescription()
-                                                        .getString()))
+                                                Formatting.strip(descTranslation))
                                         .replace("\\n", "\n")
                                         .replace("%advNameURL%", URLEncoder.encode(Formatting.strip(advancement.getDisplay().getTitle().getString()), StandardCharsets.UTF_8))
                                         .replace("%advDescURL%", URLEncoder.encode(Formatting.strip(advancement.getDisplay().getDescription().getString()), StandardCharsets.UTF_8))

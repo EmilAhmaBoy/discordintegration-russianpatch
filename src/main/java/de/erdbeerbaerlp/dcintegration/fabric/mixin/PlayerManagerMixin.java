@@ -81,7 +81,7 @@ public class PlayerManagerMixin {
                         final EmbedBuilder b = Configuration.instance().embedMode.playerJoinMessage.toEmbedJson(Configuration.instance().embedMode.playerJoinMessage.customJSON
                                 .replace("%uuid%", p.getUuid().toString())
                                 .replace("%uuid_dashless%", p.getUuid().toString().replace("-", ""))
-                                .replace("%name%", FabricMessageUtils.formatPlayerName(p))
+                                .replace("%name%", p.getEntityName())
                                 .replace("%randomUUID%", UUID.randomUUID().toString())
                                 .replace("%avatarURL%", avatarURL)
                                 .replace("%playerColor%", "" + TextColors.generateFromUUID(p.getUuid()).getRGB())
